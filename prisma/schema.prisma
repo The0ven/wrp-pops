@@ -1,0 +1,66 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Nation {
+  id              String     @id @default(cuid())
+  name            String
+  description     String?
+  region          String
+  isArchived      Boolean    @default(false)
+  startYear       Int        @default(1000)
+  startPopulation Int        @default(0)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  growths         Growth[]
+  additions       Addition[]
+  vassalIds       String
+  overlordId      String?
+}
+
+model Era {
+  id          String     @id @default(cuid())
+  name        String
+  startYear   Int
+  endYear     Int
+  startDate   DateTime
+  endDate     DateTime
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  growths     Growth[]
+  additions   Addition[]
+}
+
+model Growth {
+  id              String   @id @default(cuid())
+  startPopulation Int
+  growthRate      Float
+  endPopulation   Int
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  nationId        String
+  eraId           String
+  era             Era      @relation(fields: [eraId], references: [id])
+  nation          Nation   @relation(fields: [nationId], references: [id])
+}
+
+model Addition {
+  id        String   @id @default(cuid())
+  amount    Int // The absolute change in population (can be positive or negative)
+  year      Int // The year when this addition occurs
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  nationId  String
+  eraId     String
+  era       Era      @relation(fields: [eraId], references: [id])
+  nation    Nation   @relation(fields: [nationId], references: [id])
+}
