@@ -1,18 +1,16 @@
 "use client";
 
 import { NationForm } from "@/components/forms/NationForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { Nation } from "@prisma/client";
 import { useEffect, useState } from "react";
 import React from "react";
+import { handleSubmit } from "@/actions/forms";
 
 export default function EditNationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
-  const router = useRouter();
   const [nation, setNation] = useState<Nation | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -36,26 +34,6 @@ export default function EditNationPage({ params }: { params: Promise<{ id: strin
     fetchNation();
   }, [id]);
 
-  const handleSubmit = async (data: Omit<Nation, "id" | "createdAt" | "updatedAt">) => {
-    try {
-      const response = await fetch(`/api/nations/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update nation');
-      }
-
-      router.push(`/nations/${id}`);
-    } catch (error) {
-      console.error('Error updating nation:', error);
-      // TODO: Show error message to user
-    }
-  };
 
   if (loading) {
     return <div>Loading...</div>;
@@ -64,6 +42,7 @@ export default function EditNationPage({ params }: { params: Promise<{ id: strin
   if (!nation) {
     return <div>Nation not found</div>;
   }
+  console.log(JSON.stringify(nation))
 
   return (
     <div className="space-y-6">
@@ -81,7 +60,7 @@ export default function EditNationPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <NationForm initialData={nation} onSubmit={handleSubmit} />
+      <NationForm initialData={nation} onSubmitAction={handleSubmit} action="PUT" />
     </div>
   );
 } 

@@ -4,19 +4,19 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Nation } from "@prisma/client";
 import { Switch } from "@/components/ui/switch";
 import { FancyMultiSelect } from "@/components/ui/multiselect";
-import { Form } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { SubmitHandler, useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 
 interface NationFormProps {
   initialData?: Nation;
-  onSubmit: (data: Omit<Nation, "id" | "createdAt" | "updatedAt">) => void;
+  onSubmitAction: (action: "POST" | "PUT", id: string | undefined, data: Omit<Nation, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+  action: "POST" | "PUT";
 }
 
 const nationFormSchema = z.object({
@@ -30,30 +30,55 @@ const nationFormSchema = z.object({
   overlordId: z.string().optional(),
 })
 
-export function NationForm({ initialData, onSubmit }: NationFormProps) {
-  const [name, setName] = useState(initialData?.name || "");
-  const [description, setDescription] = useState(initialData?.description || "");
-  const [region, setRegion] = useState(initialData?.region || "");
-  const [isArchived, setIsArchived] = useState(initialData?.isArchived || false);
-  const [startYear, setStartYear] = useState(initialData?.startYear || 1000);
-  const [startPopulation, setStartPopulation] = useState(initialData?.startPopulation || 0);
-  const [availableNations, setAvailableNations] = useState<Set<Nation>>(new Set());
-  const [selectedVassals, setSelectedVassals] = useState<Set<Nation>>(
-    initialData?.vassalIds ? new Set(JSON.parse(initialData.vassalIds)) : new Set()
-  );
+type FormSchema = z.infer<typeof nationFormSchema>
 
-  const form = useForm<z.infer<typeof nationFormSchema>>({
+const fetchNation = async (id: string): Promise<Nation> => {
+    const response = await fetch(`/api/nations/${id}`);
+    if (!response.ok) {
+        throw new Error(`Failed to fetch nation with id ${id}`);
+    }
+    return await response.json() as Nation;
+}
+
+export function NationForm({ initialData, onSubmitAction, action }: NationFormProps) {
+  console.log(initialData?.vassalIds)
+  const [isArchived, setIsArchived] = useState(initialData?.isArchived || false);
+  const [availableNations, setAvailableNations] = useState<Set<Nation>>(new Set());
+  const [selectedVassals, setSelectedVassals] = useState<Set<Nation>>(new Set());
+
+  useEffect(() => {
+    const ids: string[] = JSON.parse(initialData?.vassalIds || "[]")
+    const fetchNations = async () => {
+        try {
+            const nations = await Promise.all(ids.map(id => fetchNation(id)))
+            setSelectedVassals(new Set(nations))
+        } catch (error) {
+            console.error('Error fetching nations:', error);
+        }
+    }
+    fetchNations();
+  }, [initialData?.vassalIds])
+
+  const router = useRouter()
+
+  const form = useForm<FormSchema>({
     resolver: zodResolver(nationFormSchema),
     defaultValues: {
-      name: "",
-      description: "",
-      region: "",
-      isArchived: false,
-      startYear: 1000,
-      startPopulation: 0,
-      vassalIds: [],
+      name: initialData?.name,
+      description: initialData?.description || undefined,
+      region: initialData?.region,
+      isArchived: initialData?.isArchived,
+      startYear: initialData?.startYear,
+      startPopulation: initialData?.startPopulation,
+      vassalIds: Array.from(selectedVassals).map((v) => v.id),
     },
   })
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = form;
 
   const setVassals = (vassals: Nation[]) => {
     setSelectedVassals(new Set(vassals));
@@ -72,7 +97,7 @@ export function NationForm({ initialData, onSubmit }: NationFormProps) {
           n.overlordId !== initialData?.id && // Not already has this nation as overlord
           !hasCircularDependency(n, initialData?.id) // Would not create circular dependency
         );
-        setAvailableNations(filteredNations);
+        setAvailableNations(new Set(filteredNations));
       } catch (error) {
         console.error('Error fetching nations:', error);
       }
@@ -89,19 +114,34 @@ export function NationForm({ initialData, onSubmit }: NationFormProps) {
     return vassalIds.some((id: string) => hasCircularDependency(Array.from(availableNations).find(n => n.id === id)!, targetId));
   };
 
-  const doSubmit = (data: z.infer<typeof nationFormSchema>) => {
+  const onSubmitForm: SubmitHandler<FormSchema> = async (data: FormSchema) => {
     console.log("AJHJ", selectedVassals);
-    onSubmit({
+    await onSubmitAction(action, initialData?.id, {
       name: data.name,
       description: data.description,
       region: data.region,
-      isArchived: data.isArchived,
+      isArchived: isArchived,
       startYear: data.startYear,
       startPopulation: data.startPopulation,
       vassalIds: JSON.stringify(Array.from(selectedVassals).map(vassal => vassal.id)),
       overlordId: data.overlordId || null,
     });
+    router.push(`/nations${initialData?.id ? ("/"+initialData?.id) : ""}`)
   };
+
+  const FormInput = ({id, label, placeholder, params = {}}: {label: string, id: keyof FormSchema, placeholder: string, params?: any}) => {
+     return(           
+        <div className="space-y-2">
+            <Label htmlFor={id}>{label}</Label>
+            <Input
+              id={id}
+              {...register(id)}
+              placeholder={placeholder}
+              {...params}
+            />
+        </div>
+    )
+  }
 
   return (
     <Card>
@@ -109,59 +149,36 @@ export function NationForm({ initialData, onSubmit }: NationFormProps) {
         <CardTitle>{initialData ? "Edit Nation" : "Create New Nation"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(doSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nation Name</Label>
-              <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter nation name"
-              required
+          <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
+            <FormInput 
+                label="Nation Name"
+                id="name"
+                placeholder="Enter nation name"
+                params={{required: true}}
             />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="region">Region</Label>
-              <Input
+            <FormInput 
+                label="Region"
                 id="region"
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
                 placeholder="Enter region"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea
+                params={{required: true}}
+            />
+            <FormInput 
+                label="Description"
                 id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter nation description"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="startYear">Start Year</Label>
-              <Input
+            />
+            <FormInput 
+                label="Start Year"
                 id="startYear"
-                type="number"
-                value={startYear}
-                onChange={(e) => setStartYear(parseInt(e.target.value))}
                 placeholder="Enter start year"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="startPopulation">Start Population</Label>
-              <Input
+                params={{required: true, type: "number"}}
+            />
+            <FormInput 
+                label="startPopulation"
                 id="startPopulation"
-                type="number"
-                value={startPopulation}
-                onChange={(e) => setStartPopulation(parseInt(e.target.value))}
                 placeholder="Enter start population"
-                required
-              />
-            </div>
+                params={{required: true, type: "number"}}
+            />
             <div className="space-y-2">
               <Label>Vassals</Label>
               <FancyMultiSelect
@@ -176,14 +193,14 @@ export function NationForm({ initialData, onSubmit }: NationFormProps) {
                 id="isArchived"
                 checked={isArchived}
                 onCheckedChange={setIsArchived}
+                {...register("isArchived")}
               />
               <Label htmlFor="isArchived">Archive Nation</Label>
             </div>
-            <Button type="submit">
+            <Button type="submit" disabled={isSubmitting}>
               {initialData ? "Update Nation" : "Create Nation"}
             </Button>
           </form>
-        </Form>
       </CardContent>
     </Card>
   );

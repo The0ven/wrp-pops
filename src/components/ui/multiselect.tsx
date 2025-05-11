@@ -45,8 +45,6 @@ export function FancyMultiSelect({selected, nations, placeholder, setSelected}: 
     (nation) => !selected.includes(nation),
   );
 
-  console.log(selectables, selected, inputValue);
-
   return (
     <Command
       onKeyDown={handleKeyDown}

@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, Upload } from "lucide-react";
 import { NationsListWithSearch } from "@/components/nations/nations-list-with-search";
+import { NationsCheck } from "@/components/ui/nations-check";
 
 export default function NationsPage() {
   return (
@@ -15,6 +15,7 @@ export default function NationsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <NationsCheck />
           <Button variant="outline" asChild>
             <Link href="/nations/import">
               <Upload className="mr-2 h-4 w-4" />
