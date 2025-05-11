@@ -137,7 +137,7 @@ function parseNationsFromCsv(csvData: string): ParsedNation[] {
 
     // Check if nation should be archived based on latest era
     const latestEra = eras[eras.length - 1];
-    const isArchived = latestEra && (latestEra.rate === -1 || latestEra.endPop === 0);
+    const isArchived = latestEra && (latestEra.rate === -1 || latestEra.rate === 0);
 
     nations.push({
       region,
@@ -204,41 +204,23 @@ export const useImportStore = create<ImportStore>()(
             });
           }
 
-          // Create "before" era
-          const beforeEraResponse = await fetch('/api/eras', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: 'Before Recorded History',
-              startYear: 0,
-              endYear: minYear,
-              description: 'Era before the earliest recorded nation',
-            }),
-          });
-
-          if (!beforeEraResponse.ok) {
-            throw new Error('Failed to create before era');
-          }
-
-          // Create "after" era
-          const afterEraResponse = await fetch('/api/eras', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              name: 'Future Projections',
-              startYear: maxYear,
-              endYear: maxYear + 100,
-              description: 'Era for future population projections',
-            }),
-          });
-
-          if (!afterEraResponse.ok) {
-            throw new Error('Failed to create after era');
-          }
+          // // Create "before" era
+          // const beforeEraResponse = await fetch('/api/eras', {
+          //   method: 'POST',
+          //   headers: {
+          //     'Content-Type': 'application/json',
+          //   },
+          //   body: JSON.stringify({
+          //     name: 'Before Recorded History',
+          //     startYear: 0,
+          //     endYear: minYear,
+          //     description: 'Era before the earliest recorded nation',
+          //   }),
+          // });
+          //
+          // if (!beforeEraResponse.ok) {
+          //   throw new Error('Failed to create before era');
+          // }
 
           // Create all eras first
           const eraMap = new Map<string, string>(); // Maps era key to era ID
@@ -288,6 +270,42 @@ export const useImportStore = create<ImportStore>()(
 
             const nationData = await nationResponse.json();
 
+            // Create additions
+            for (const addition of nation.additions) {
+              // Find the era that ends with the addition year
+              const eraKey = Array.from(uniqueEras.keys()).find(key => {
+                const [start, end] = key.split('-').map(Number);
+                return addition.year === end;
+              });
+
+              if (!eraKey) {
+                throw new Error(`Could not find era for addition in year ${addition.year} for nation ${nation.name}`);
+              }
+
+              const eraId = eraMap.get(eraKey);
+              if (!eraId) {
+                throw new Error(`Missing era ID for addition creation ${eraKey}`);
+              }
+
+              const additionResponse = await fetch('/api/additions', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  nationId: nationData.id,
+                  eraId,
+                  year: addition.year,
+                  amount: addition.amount,
+                }),
+              });
+
+              if (!additionResponse.ok) {
+                throw new Error(`Failed to create addition for nation ${nation.name} in year ${addition.year}`);
+              }
+            }
+
+
             // Create growths for each era
             for (const era of nation.eras) {
               // Find the collapsed era that contains this era's end year
@@ -322,41 +340,6 @@ export const useImportStore = create<ImportStore>()(
 
               if (!growthResponse.ok) {
                 throw new Error(`Failed to create growth for nation ${nation.name} in era ${collapsedEraKey}`);
-              }
-            }
-
-            // Create additions
-            for (const addition of nation.additions) {
-              // Find the era that ends with the addition year
-              const eraKey = Array.from(uniqueEras.keys()).find(key => {
-                const [start, end] = key.split('-').map(Number);
-                return addition.year === end;
-              });
-
-              if (!eraKey) {
-                throw new Error(`Could not find era for addition in year ${addition.year} for nation ${nation.name}`);
-              }
-
-              const eraId = eraMap.get(eraKey);
-              if (!eraId) {
-                throw new Error(`Missing era ID for addition creation ${eraKey}`);
-              }
-
-              const additionResponse = await fetch('/api/additions', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  nationId: nationData.id,
-                  eraId,
-                  year: addition.year,
-                  amount: addition.amount,
-                }),
-              });
-
-              if (!additionResponse.ok) {
-                throw new Error(`Failed to create addition for nation ${nation.name} in year ${addition.year}`);
               }
             }
           }

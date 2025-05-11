@@ -53,16 +53,27 @@ export async function POST(request: GrowthRequest) {
     const adjustedStartPopulation = startPopulation + totalAdditions;
 
     // Calculate end population based on adjusted start population and growth rate
-    const calculatedEndPopulation = Math.round(adjustedStartPopulation * (1 + growthRate));
+    let calculatedEndPopulation = Math.round(adjustedStartPopulation * Math.pow((1 + growthRate), (era.endYear - era.startYear)));
+    if (growthRate === -1) {
+      calculatedEndPopulation = 0
+    }
 
     const growth = await prisma.growth.create({
       data: {
         startPopulation: startPopulation,
         endPopulation: endPopulation || calculatedEndPopulation,
-        growthRate,
-        notes,
-        nationId,
-        eraId,
+        growthRate: growthRate,
+        notes: notes,
+        nation: {
+          connect: {
+            id: nationId
+          }
+        },
+        era: {
+          connect: {
+            id: eraId
+          }  
+        }
       },
       include: {
         nation: true,

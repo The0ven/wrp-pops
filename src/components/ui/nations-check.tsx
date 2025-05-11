@@ -4,11 +4,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "./input";
 import { Button } from "./button";
 import { useState } from "react";
-import { nationsDiff } from "@/actions/util";
+import { archiveNationByName, nationsDiff } from "@/actions/util";
+import { Label } from "./label";
 
 export const NationsCheck = () => {
   const [nations, setNations] = useState<string>("")
   const [missing, setMissing] = useState<string[]>([])
+  const [toArchive, setToArchive] = useState<string[]>([])
 
   return(
     <Dialog>
@@ -28,11 +30,29 @@ export const NationsCheck = () => {
           <Input id="nations" value={nations} onChange={(e) => setNations(e.target.value)} className="col-span-3" placeholder="Ravhavan Union,Awalentse,Xie" />
         </div>
         <div className="mb-4 flex flex-col gap-2 max-h-[60vh] overflow-y-scroll">
-            {missing.map((v) => <p key={v}>{v}</p>)}
+            <h1 className="text-xl text-bold">To Archive</h1>
+            {toArchive.map((v) => <div className="flex justify-between">
+                <Label htmlFor={`${v}-archive-button`} className="text-sm">{v}</Label>
+                <Button 
+                  id={`${v}-archive-button`} 
+                  value={v} 
+                  variant="destructive"
+                  size="sm"
+                  onClick={(e) => archiveNationByName(e.currentTarget.value).finally(() => {})}
+                >
+                  Archive
+                </Button>
+            </div>
+            )}
+            <h1 className="text-xl bold">To Create</h1>
+            {missing.map((v) => <p className="text-sm" key={v}>{v}</p>)}
         </div>
         <DialogFooter>
           <Button type="submit" onClick={(e) => {
-            nationsDiff(nations.split(',')).then((diff) => setMissing(diff))
+            nationsDiff(nations.split(',')).then(([miss, extra]) => {
+                setMissing(miss)
+                setToArchive(extra)
+            })
           }}>
             Check
           </Button>

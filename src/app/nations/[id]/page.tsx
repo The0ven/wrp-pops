@@ -3,20 +3,11 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import ArmyCalculator from "@/components/ui/armycalculator";
 
 async function getNation(id: string) {
   const nation = await prisma.nation.findUnique({
     where: { id },
-    include: {
-      growths: {
-        include: {
-          era: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      },
-    },
   });
 
   if (!nation) {
@@ -26,10 +17,40 @@ async function getNation(id: string) {
   return nation;
 }
 
+async function getEras(id: string, startYear: number) {
+  const eras = await prisma.era.findMany({
+    where: {
+      startYear: {
+        gte: startYear
+      },
+    },
+    include: {
+      growths: {
+        where: {
+          nationId: id
+        }
+      },
+      additions: {
+        where: {
+          nationId: id
+        }
+      }
+    },
+    orderBy: {
+      startYear: "desc"
+    }
+  })
+
+  return eras;
+}
+
 export default async function NationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const nation = await getNation(id);
-  const latestGrowth = nation.growths[0];
+  const eras = await getEras(id, nation.startYear);
+  const latestEra = eras[0]
+  const latestGrowth = latestEra.growths[0]
+  console.log(latestEra.growths.length)
 
   return (
     <div className="space-y-6">
@@ -84,12 +105,10 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
 
         <Card>
           <CardHeader>
-            <CardTitle>Description</CardTitle>
+            <CardTitle>Recruitment Statistics</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              {nation.description || 'No description available'}
-            </p>
+            <ArmyCalculator pop={latestGrowth?.endPopulation} />
           </CardContent>
         </Card>
       </div>
@@ -100,24 +119,30 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {nation.growths.map((growth) => (
-              <div key={growth.id} className="flex items-center justify-between py-2 border-b last:border-0">
+            {eras.map((era) => {
+              const growth = era.growths[0];
+              const addition = era.additions[0];
+              if (!growth) {
+               return null
+              }
+              return(
+              <div key={growth?.id} className="flex items-center justify-between py-2 border-b last:border-0">
                 <div>
-                  <p className="font-medium">{growth.era.name}</p>
+                  <p className="font-medium">{era.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {new Date(growth.createdAt).toLocaleDateString()}
+                    {(addition?.amount > 0 ? "+" : "") + (addition?.amount || 0)}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="font-medium">
-                    {growth.endPopulation.toLocaleString()}
+                    {growth?.endPopulation.toLocaleString()} {era.endYear}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {growth.growthRate > 0 ? '+' : ''}{(growth.growthRate * 100).toFixed(2)}%
+                    {growth?.growthRate > 0 ? '+' : ''}{(growth?.growthRate * 100).toFixed(2)}%
                   </p>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </CardContent>
       </Card>

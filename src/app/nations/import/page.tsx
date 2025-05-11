@@ -74,6 +74,9 @@ export default function ImportNationsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Preview</CardTitle>
+            <Button onClick={submitNations}>
+              Import Nations
+            </Button> 
           </CardHeader>
           <CardContent className="space-y-4">
             {error ? (

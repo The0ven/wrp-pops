@@ -174,7 +174,7 @@ export function NationForm({ initialData, onSubmitAction, action }: NationFormPr
                 params={{required: true, type: "number"}}
             />
             <FormInput 
-                label="startPopulation"
+                label="Start Population"
                 id="startPopulation"
                 placeholder="Enter start population"
                 params={{required: true, type: "number"}}
