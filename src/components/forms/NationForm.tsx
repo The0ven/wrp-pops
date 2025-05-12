@@ -12,22 +12,24 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectTrigger, SelectValue, SelectItem } from "../ui/select";
+import { handleSubmitAction } from "@/actions/forms";
 
 interface NationFormProps {
   initialData?: Nation;
-  onSubmitAction: (action: "POST" | "PUT", id: string | undefined, data: Omit<Nation, "id" | "createdAt" | "updatedAt">) => Promise<void>;
   action: "POST" | "PUT";
+  nations: Nation[];
 }
 
 const nationFormSchema = z.object({
   name: z.string().min(2).max(50),
-  description: z.string().min(2).max(50),
   region: z.string().min(2).max(50),
   isArchived: z.boolean(),
   startYear: z.number(),
   startPopulation: z.number(),
   vassalIds: z.array(z.string()),
   overlordId: z.string().optional(),
+  takingFrom: z.string().optional(),
 })
 
 type FormSchema = z.infer<typeof nationFormSchema>
@@ -40,9 +42,10 @@ const fetchNation = async (id: string): Promise<Nation> => {
     return await response.json() as Nation;
 }
 
-export function NationForm({ initialData, onSubmitAction, action }: NationFormProps) {
+export function NationForm({ initialData, action, nations }: NationFormProps) {
   console.log(initialData?.vassalIds)
   const [isArchived, setIsArchived] = useState(initialData?.isArchived || false);
+  const [isTaking, setIsTaking] = useState(false);
   const [availableNations, setAvailableNations] = useState<Set<Nation>>(new Set());
   const [selectedVassals, setSelectedVassals] = useState<Set<Nation>>(new Set());
 
@@ -65,12 +68,12 @@ export function NationForm({ initialData, onSubmitAction, action }: NationFormPr
     resolver: zodResolver(nationFormSchema),
     defaultValues: {
       name: initialData?.name,
-      description: initialData?.description || undefined,
       region: initialData?.region,
       isArchived: initialData?.isArchived,
       startYear: initialData?.startYear,
       startPopulation: initialData?.startPopulation,
       vassalIds: Array.from(selectedVassals).map((v) => v.id),
+      takingFrom: undefined,
     },
   })
 
@@ -116,15 +119,16 @@ export function NationForm({ initialData, onSubmitAction, action }: NationFormPr
 
   const onSubmitForm: SubmitHandler<FormSchema> = async (data: FormSchema) => {
     console.log("AJHJ", selectedVassals);
-    await onSubmitAction(action, initialData?.id, {
+    await handleSubmitAction(action, initialData?.id, {
       name: data.name,
-      description: data.description,
+      description: null,
       region: data.region,
       isArchived: isArchived,
       startYear: data.startYear,
       startPopulation: data.startPopulation,
       vassalIds: JSON.stringify(Array.from(selectedVassals).map(vassal => vassal.id)),
       overlordId: data.overlordId || null,
+      takingFrom: data.takingFrom
     });
     router.push(`/nations${initialData?.id ? ("/"+initialData?.id) : ""}`)
   };
@@ -163,11 +167,6 @@ export function NationForm({ initialData, onSubmitAction, action }: NationFormPr
                 params={{required: true}}
             />
             <FormInput 
-                label="Description"
-                id="description"
-                placeholder="Enter nation description"
-            />
-            <FormInput 
                 label="Start Year"
                 id="startYear"
                 placeholder="Enter start year"
@@ -179,6 +178,31 @@ export function NationForm({ initialData, onSubmitAction, action }: NationFormPr
                 placeholder="Enter start population"
                 params={{required: true, type: "number"}}
             />
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isTaking"
+                checked={isTaking}
+                onCheckedChange={setIsTaking}
+              />
+              <Label htmlFor="isTaking">Taking Population</Label>
+            </div>
+            {isTaking &&
+              <div className="space-y-2">
+                <Label>Taking From</Label>
+                <Select {...register("takingFrom")}>
+                  <SelectTrigger id="nation" className="w-[220px]">
+                    <SelectValue placeholder="Select a nation" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nations.map((nation) => (
+                      <SelectItem key={nation.id} value={nation.id}>
+                        {nation.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            }
             <div className="space-y-2">
               <Label>Vassals</Label>
               <FancyMultiSelect

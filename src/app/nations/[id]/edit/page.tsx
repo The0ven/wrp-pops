@@ -1,48 +1,23 @@
-"use client";
-
 import { NationForm } from "@/components/forms/NationForm";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { Nation } from "@prisma/client";
-import { useEffect, useState } from "react";
 import React from "react";
-import { handleSubmit } from "@/actions/forms";
 
-export default function EditNationPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditNationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
-  const [nation, setNation] = useState<Nation | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchNation = async () => {
-      try {
-        const response = await fetch(`/api/nations/${id}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch nation');
-        }
-        const data = await response.json();
-        setNation(data);
-      } catch (error) {
-        console.error('Error fetching nation:', error);
-        // TODO: Show error message to user
-      } finally {
-        setLoading(false);
-      }
-    };
+  const response = await fetch(`/api/nations/${id}`)
+  const nations = await prisma?.nation.findMany({
+    where: {
+      isArchived: false
+    }
+  })
 
-    fetchNation();
-  }, [id]);
-
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!nation) {
+  if (!response.ok) {
     return <div>Nation not found</div>;
   }
-  console.log(JSON.stringify(nation))
+  const nation = await response.json()
 
   return (
     <div className="space-y-6">
@@ -60,7 +35,7 @@ export default function EditNationPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      <NationForm initialData={nation} onSubmitAction={handleSubmit} action="PUT" />
+      <NationForm initialData={nation} action="PUT" nations={nations || []} />
     </div>
   );
 } 

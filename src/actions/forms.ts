@@ -1,6 +1,6 @@
 import { Nation } from "@prisma/client";
 
-export const handleSubmit = async (action: "POST" | "PUT", id: string | undefined, data: Omit<Nation, "id" | "createdAt" | "updatedAt">) => {
+export const handleSubmitAction = async (action: "POST" | "PUT", id: string | undefined, data: Omit<Nation, "id" | "createdAt" | "updatedAt">) => {
     console.log("STARTING SUBMIT")
     try {
       const response = await fetch(`/api/nations${action === "PUT" ? ("/"+id) : ""}`, {
