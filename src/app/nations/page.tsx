@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Users, Upload } from "lucide-react";
 import { NationsListWithSearch } from "@/components/nations/nations-list-with-search";
-import { NationsCheck } from "@/components/ui/nations-check";
+import { NationsCheck } from "@/components/nations/nations-check";
 
 export default function NationsPage() {
   return (

@@ -2,25 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Nation } from '@prisma/client';
 
-interface NationRequest extends NextRequest {
-  json: () => Promise<Nation>;
-}
 
+export async function getNation(id: string, include: Record<string, any> = {}) {
+  const nation = await prisma.nation.findUnique({
+    where: { id: id },
+    include: include,
+  });
+
+  if (!nation) {
+    return null;
+  }
+
+  return nation;
+}
 export async function GET(
-  request: NationRequest,
-  { params }: Promise<{ id: string }>
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const nation = await prisma.nation.findUnique({
-      where: { id: (await params).id },
-      include: {
-        growths: {
-          include: {
-            era: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
+    const {id} = await params;
+    const nation = await getNation(id, {
+      growths: {
+        include: {
+          era: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
         },
       },
     });
@@ -32,13 +39,7 @@ export async function GET(
       );
     }
 
-    // Parse vassalIds
-    const nationWithParsedVassals = {
-      ...nation,
-      vassalIds: nation.vassalIds || '[]',
-    };
-
-    return NextResponse.json(nationWithParsedVassals);
+    return NextResponse.json(nation);
   } catch (error) {
     console.error('Error fetching nation:', error);
     return NextResponse.json(
@@ -48,35 +49,29 @@ export async function GET(
   }
 }
 
+//make this accept partial data
+export async function updateNation(id: string, data: Partial<Nation>) {
+  // Update the nation with new data and vassal relationships
+  const nation = await prisma.nation.update({
+    where: { id: id },
+    data: data
+  });
+
+  console.log("PUT /nations/[id] 200")
+
+  return nation;
+}
 export async function PUT(
-  request: NationRequest,
-  { params }: Promise<{ id: string }>
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const body = await request.json();
-    const { name, description, region, isArchived, startYear, startPopulation, vassalIds } = body;
+    const {id} = await params;
 
-    // Update the nation with new data and vassal relationships
-    const nation = await prisma.nation.update({
-      where: { id: (await params).id },
-      data: {
-        name,
-        description,
-        region,
-        isArchived,
-        startYear,
-        startPopulation,
-        vassalIds: vassalIds,
-      },
-    });
+    const nation = await updateNation(id, body);
 
-    // Parse vassalIds for response
-    const nationWithParsedVassals = {
-      ...nation,
-      vassalIds: nation.vassalIds || '[]',
-    };
-
-    return NextResponse.json(nationWithParsedVassals);
+    return NextResponse.json(nation);
   } catch (error) {
     console.error('Error updating nation:', error);
     return NextResponse.json(

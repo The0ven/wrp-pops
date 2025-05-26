@@ -6,21 +6,24 @@ interface EraRequest extends NextRequest {
   json: () => Promise<Era>;
 }
 
+export async function createEra(data: Omit<Era, "id" | "createdAt" | "updatedAt">) {
+  const era = await prisma.era.create({
+    data: {
+      name: data.name,
+      startYear: data.startYear,
+      endYear: data.endYear,
+      description: data.description,
+      startDate: new Date(data.startYear, 0, 1),
+      endDate: new Date(data.endYear, 11, 31),
+    },
+  });
+  return era;
+}
+
 export async function POST(request: EraRequest) {
   try {
     const body = await request.json();
-    const { name, startYear, endYear, description } = body;
-
-    const era = await prisma.era.create({
-      data: {
-        name,
-        startYear,
-        endYear,
-        startDate: new Date(startYear, 0, 1),
-        endDate: new Date(endYear, 11, 31),
-        description,
-      },
-    });
+    const era = await createEra(body)
 
     return NextResponse.json(era);
   } catch (error) {
@@ -32,32 +35,37 @@ export async function POST(request: EraRequest) {
   }
 }
 
-export async function GET() {
-  try {
-    const eras = await prisma.era.findMany({
-      orderBy: [
-        { startYear: 'asc' },
-        { endYear: 'asc' },
-      ],
-      include: {
-        growths: {
-          include: {
-            nation: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
+export async function getEras() {
+  const eras = await prisma.era.findMany({
+    orderBy: [
+      { startYear: 'asc' },
+      { endYear: 'asc' },
+    ],
+    include: {
+      growths: {
+        include: {
+          nation: true,
         },
-        additions: {
-          include: {
-            nation: true,
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
+        orderBy: {
+          createdAt: 'desc',
         },
       },
-    });
+      additions: {
+        include: {
+          nation: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      },
+    },
+  });
+  return eras;
+}
+
+export async function GET() {
+  try {
+    const eras = await getEras();
 
     return NextResponse.json(eras);
   } catch (error) {

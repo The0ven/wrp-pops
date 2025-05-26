@@ -1,27 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { Nation } from '@/types/population';
+import { Nation } from '@prisma/client';
 
 interface NationRequest extends NextRequest {
   json: () => Promise<Nation>;
 }
 
+export async function createNation(data: Omit<Nation, "id" | "createdAt" | "updatedAt">) {
+  const nation = await prisma.nation.create({
+    data: {
+      name: data.name,
+      description: data.description,
+      region: data.region,
+      isArchived: data.isArchived,
+      startYear: data.startYear,
+      startPopulation: data.startPopulation,
+    },
+  });
+  return nation;
+}
+
 export async function POST(request: NationRequest) {
   try {
     const body = await request.json();
-    const { name, description, region, isArchived, startYear, startPopulation, vassalIds } = body;
 
-    const nation = await prisma.nation.create({
-      data: {
-        name,
-        description,
-        region,
-        isArchived,
-        startYear,
-        startPopulation,
-        vassalIds: vassalIds,
-      },
-    });
+    const nation = await createNation(body);
 
     return NextResponse.json(nation);
   } catch (error) {
@@ -33,30 +36,33 @@ export async function POST(request: NationRequest) {
   }
 }
 
-export async function GET() {
-  try {
-    const nations = await prisma.nation.findMany({
-      orderBy: [
-        { isArchived: 'asc' }, // Active nations first
-        { region: 'asc' },     // Then by region
-        { name: 'asc' },       // Then alphabetically by name
-      ],
-      include: {
-        growths: {
-          include: {
-            era: true,
-          },
+export async function fetchNations() {
+  const nations = await prisma.nation.findMany({
+    orderBy: [
+      { isArchived: 'asc' }, // Active nations first
+      { region: 'asc' },     // Then by region
+      { name: 'asc' },       // Then alphabetically by name
+    ],
+    include: {
+      growths: {
+        include: {
+          era: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
         },
       },
-    });
+    },
+  }); 
 
-    // Parse vassalIds for each nation
-    const nationsWithParsedVassals = nations.map((nation) => ({
-      ...nation,
-      vassalIds: nation.vassalIds,
-    }));
+  return nations;
+}
 
-    return NextResponse.json(nationsWithParsedVassals);
+export async function GET() {
+  try {
+    const nations = await fetchNations();
+
+    return NextResponse.json(nations);
   } catch (error) {
     console.error('Error fetching nations:', error);
     return NextResponse.json(

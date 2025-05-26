@@ -20,7 +20,7 @@ async function getNation(id: string) {
 async function getEras(id: string, startYear: number) {
   const eras = await prisma.era.findMany({
     where: {
-      startYear: {
+      endYear: {
         gte: startYear
       },
     },
@@ -50,7 +50,6 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
   const eras = await getEras(id, nation.startYear);
   const latestEra = eras[0]
   const latestGrowth = latestEra.growths[0]
-  console.log(latestEra.growths.length)
 
   return (
     <div className="space-y-6">
@@ -63,7 +62,7 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
           </Button>
           <div>
             <h1 className="text-3xl font-bold">{nation.name}</h1>
-            <p className="text-muted-foreground">{nation.region}</p>
+            <p className="text-muted-foreground">{nation.region} - Founded {nation.startYear}</p>
           </div>
         </div>
         <Button variant="outline" asChild>
@@ -77,7 +76,7 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Current Status</CardTitle>
+            <CardTitle>Current Status - {latestEra.endYear}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
@@ -126,22 +125,24 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
                return null
               }
               return(
-              <div key={growth?.id} className="flex items-center justify-between py-2 border-b last:border-0">
-                <div>
-                  <p className="font-medium">{era.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(addition?.amount > 0 ? "+" : "") + (addition?.amount || 0)}
-                  </p>
+              <Link key={growth?.id} href={`/eras/${era.id}/nations/${id}`} className="block">
+                <div className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-muted/50 rounded px-2 transition-colors cursor-pointer">
+                  <div>
+                    <p className="font-medium">{era.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {(addition?.amount > 0 ? "+" : "") + (addition?.amount || 0)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {growth?.endPopulation.toLocaleString()} {era.endYear}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {growth?.growthRate > 0 ? '+' : ''}{(growth?.growthRate * 100).toFixed(2)}%
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium">
-                    {growth?.endPopulation.toLocaleString()} {era.endYear}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {growth?.growthRate > 0 ? '+' : ''}{(growth?.growthRate * 100).toFixed(2)}%
-                  </p>
-                </div>
-              </div>
+              </Link>
             )})}
           </div>
         </CardContent>

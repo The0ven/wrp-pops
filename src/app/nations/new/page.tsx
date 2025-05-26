@@ -2,12 +2,6 @@ import { NationForm } from "@/components/forms/NationForm";
 import NewLink from "./link";
 
 export default async function NewNationPage() {
-  const nations = await prisma?.nation.findMany({
-    where: {
-      isArchived: false
-    }
-  })
-
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
@@ -19,7 +13,7 @@ export default async function NewNationPage() {
           </p>
         </div>
       </div>
-      <NationForm action="POST" nations={nations||[]} />
+      <NationForm />
     </div>
   );
 } 

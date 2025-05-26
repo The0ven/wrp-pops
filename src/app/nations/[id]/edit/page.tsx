@@ -3,21 +3,25 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import React from "react";
+import { getNation } from "@/app/api/nations/[id]/route";
 
 export default async function EditNationPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = React.use(params);
+  const { id } = await params;
 
-  const response = await fetch(`/api/nations/${id}`)
-  const nations = await prisma?.nation.findMany({
-    where: {
-      isArchived: false
-    }
-  })
+  const nation = await getNation(id, {
+    growths: {
+      include: {
+        era: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    },
+  }); 
 
-  if (!response.ok) {
+  if (!nation) {
     return <div>Nation not found</div>;
   }
-  const nation = await response.json()
 
   return (
     <div className="space-y-6">
@@ -35,7 +39,7 @@ export default async function EditNationPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      <NationForm initialData={nation} action="PUT" nations={nations || []} />
+      <NationForm initialData={nation}/>
     </div>
   );
 } 

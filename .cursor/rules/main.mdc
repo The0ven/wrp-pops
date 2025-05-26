@@ -1,0 +1,26 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Stack
+- next js using app router
+- shadcn for ui
+- prisma for a db using mysql
+- react-hook-form for form handling
+- zustand for form validation
+
+# General Guide
+- when writing pages always prefer sever side fetching to client hooks
+- always write server code in src/app/api as routes
+- keep the router code clean, with the routes themselves calling another function like in [route.ts](mdc:src/app/api/eras/route.ts)
+- use the functions called by the router code for actions as well in src/actions so that client components can reuse the logic
+
+# Guide for styling
+- always use shadcn components wherever possible. Use shadcn not shadcn-ui
+- we are using tailwind v4
+- the site should be elegant but not ornate. simple but clean and beautiful is best.
+
+# Guide for running
+- there is always a dev server being run with pnpm dev
+- use pnpm for all node related commands

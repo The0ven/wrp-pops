@@ -12,24 +12,20 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { useRouter } from "next/navigation";
-import { Select, SelectContent, SelectTrigger, SelectValue, SelectItem } from "../ui/select";
-import { handleSubmitAction } from "@/actions/forms";
+import { handleSubmitNationAction, handleSubmitNationEras } from "@/actions/forms";
 
 interface NationFormProps {
   initialData?: Nation;
-  action: "POST" | "PUT";
-  nations: Nation[];
 }
 
 const nationFormSchema = z.object({
-  name: z.string().min(2).max(50),
+  name: z.string().min(2).max(100),
   region: z.string().min(2).max(50),
   isArchived: z.boolean(),
   startYear: z.number(),
   startPopulation: z.number(),
   vassalIds: z.array(z.string()),
   overlordId: z.string().optional(),
-  takingFrom: z.string().optional(),
 })
 
 type FormSchema = z.infer<typeof nationFormSchema>
@@ -42,10 +38,8 @@ const fetchNation = async (id: string): Promise<Nation> => {
     return await response.json() as Nation;
 }
 
-export function NationForm({ initialData, action, nations }: NationFormProps) {
-  console.log(initialData?.vassalIds)
+export function NationForm({ initialData }: NationFormProps) {
   const [isArchived, setIsArchived] = useState(initialData?.isArchived || false);
-  const [isTaking, setIsTaking] = useState(false);
   const [availableNations, setAvailableNations] = useState<Set<Nation>>(new Set());
   const [selectedVassals, setSelectedVassals] = useState<Set<Nation>>(new Set());
 
@@ -53,11 +47,11 @@ export function NationForm({ initialData, action, nations }: NationFormProps) {
     const ids: string[] = JSON.parse(initialData?.vassalIds || "[]")
     const fetchNations = async () => {
         try {
-            const nations = await Promise.all(ids.map(id => fetchNation(id)))
-            setSelectedVassals(new Set(nations))
-        } catch (error) {
-            console.error('Error fetching nations:', error);
-        }
+          const nations = await Promise.all(ids.map(id => fetchNation(id)))
+          setSelectedVassals(new Set(nations))
+      } catch (error) {
+          console.error('Error fetching nations:', error);
+      }
     }
     fetchNations();
   }, [initialData?.vassalIds])
@@ -69,13 +63,14 @@ export function NationForm({ initialData, action, nations }: NationFormProps) {
     defaultValues: {
       name: initialData?.name,
       region: initialData?.region,
-      isArchived: initialData?.isArchived,
+      isArchived: initialData?.isArchived || false,
       startYear: initialData?.startYear,
       startPopulation: initialData?.startPopulation,
       vassalIds: Array.from(selectedVassals).map((v) => v.id),
-      takingFrom: undefined,
     },
   })
+
+  console.log(form.getValues())
 
   const {
     register,
@@ -117,29 +112,39 @@ export function NationForm({ initialData, action, nations }: NationFormProps) {
     return vassalIds.some((id: string) => hasCircularDependency(Array.from(availableNations).find(n => n.id === id)!, targetId));
   };
 
-  const onSubmitForm: SubmitHandler<FormSchema> = async (data: FormSchema) => {
-    console.log("AJHJ", selectedVassals);
-    await handleSubmitAction(action, initialData?.id, {
+  const onSubmitForm = async (data: FormSchema) => {
+    console.log(errors)
+    const result = await handleSubmitNationAction(initialData?.id, {
       name: data.name,
       description: null,
       region: data.region,
       isArchived: isArchived,
       startYear: data.startYear,
       startPopulation: data.startPopulation,
-      vassalIds: JSON.stringify(Array.from(selectedVassals).map(vassal => vassal.id)),
-      overlordId: data.overlordId || null,
-      takingFrom: data.takingFrom
+      empireId: data.empireId || null,
     });
+
+    // Use the returned nation id or the initialData id
+    const nationId = result?.nation?.id || initialData?.id;
+    if (nationId) {
+      await handleSubmitNationEras(
+        nationId,
+        data.startYear,
+        data.startPopulation,
+        'Auto-added on nation creation or edit'
+      );
+    }
     router.push(`/nations${initialData?.id ? ("/"+initialData?.id) : ""}`)
   };
 
+
   const FormInput = ({id, label, placeholder, params = {}}: {label: string, id: keyof FormSchema, placeholder: string, params?: any}) => {
-     return(           
+    return(           
         <div className="space-y-2">
             <Label htmlFor={id}>{label}</Label>
             <Input
               id={id}
-              {...register(id)}
+              {...register(id, { valueAsNumber: nationFormSchema.shape[id]._def.typeName === "ZodNumber" })}
               placeholder={placeholder}
               {...params}
             />
@@ -178,31 +183,6 @@ export function NationForm({ initialData, action, nations }: NationFormProps) {
                 placeholder="Enter start population"
                 params={{required: true, type: "number"}}
             />
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="isTaking"
-                checked={isTaking}
-                onCheckedChange={setIsTaking}
-              />
-              <Label htmlFor="isTaking">Taking Population</Label>
-            </div>
-            {isTaking &&
-              <div className="space-y-2">
-                <Label>Taking From</Label>
-                <Select {...register("takingFrom")}>
-                  <SelectTrigger id="nation" className="w-[220px]">
-                    <SelectValue placeholder="Select a nation" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {nations.map((nation) => (
-                      <SelectItem key={nation.id} value={nation.id}>
-                        {nation.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            }
             <div className="space-y-2">
               <Label>Vassals</Label>
               <FancyMultiSelect
@@ -216,8 +196,10 @@ export function NationForm({ initialData, action, nations }: NationFormProps) {
               <Switch
                 id="isArchived"
                 checked={isArchived}
-                onCheckedChange={setIsArchived}
-                {...register("isArchived")}
+                onCheckedChange={(b) => {
+                  setIsArchived(b)
+                  form.setValue("isArchived", b)
+                }}
               />
               <Label htmlFor="isArchived">Archive Nation</Label>
             </div>
@@ -225,6 +207,7 @@ export function NationForm({ initialData, action, nations }: NationFormProps) {
               {initialData ? "Update Nation" : "Create Nation"}
             </Button>
           </form>
+          {errors && <div className="text-red-500">{errors.name?.message}</div>}
       </CardContent>
     </Card>
   );

@@ -8,6 +8,7 @@ import {
   Clock,
   Users,
   FileText,
+  Crown,
 } from "lucide-react";
 import { useSidebar } from "@/components/providers/SidebarProvider";
 
@@ -21,6 +22,12 @@ const Sidebar = () => {
       label: "Nations",
       icon: Globe,
       active: pathname.startsWith("/nations"),
+    },
+    {
+      href: "/empires",
+      label: "Empires",
+      icon: Crown,
+      active: pathname.startsWith("/empires"),
     },
     {
       href: "/eras",

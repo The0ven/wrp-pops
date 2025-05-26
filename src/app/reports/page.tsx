@@ -21,6 +21,12 @@ interface Nation {
   population: number;
 }
 
+interface Empire {
+  name: string;
+  vassals: Nation[];
+  totalPopulation: number;
+}
+
 interface Report {
   era: {
     name: string;
@@ -30,6 +36,7 @@ interface Report {
   highestPopulatedRegion: string;
   highestPopulatedNation: string;
   regions: Record<string, Nation[]>;
+  empires: Record<string, Empire>;
 }
 
 export default function ReportsPage() {
@@ -113,38 +120,71 @@ export default function ReportsPage() {
       {loading ? (
         <div className="text-center">Loading...</div>
       ) : report ? (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="prose dark:prose-invert max-w-none">
-              <h1># Population of Arcanis - {report.era.endYear} S.Y.</h1>
-              <ul>
-                <li>- Total Population: {formatPopulation(report.totalPopulation)}</li>
-                <li>- Highest Populated Region: {report.highestPopulatedRegion}</li>
-                <li>- Highest Populated Nation: {report.highestPopulatedNation}</li>
-              </ul>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Population Report</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="prose dark:prose-invert max-w-none">
+                <h1># Population of Arcanis - {report.era.endYear} S.Y.</h1>
+                <ul>
+                  <li>- Total Population: {formatPopulation(report.totalPopulation)}</li>
+                  <li>- Highest Populated Region: {report.highestPopulatedRegion}</li>
+                  <li>- Highest Populated Nation: {report.highestPopulatedNation}</li>
+                </ul>
 
-              {Object.entries(report.regions).map(([region, nations]) => {
-                const regionPopulation = nations.reduce((sum, nation) => sum + nation.population, 0);
-                return (
-                  <div key={region}>
-                    <h2>## __{region}__ - {formatPopulation(regionPopulation)}</h2>
-                    <ul>
-                      {nations.map((nation, index) => (
-                        <li key={nation.name}>
-                          {index === 0 ? (
-                            <strong>__{nation.name}__</strong>
-                          ) : (
-                            nation.name
-                          )}: {formatPopulation(nation.population)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+                {Object.entries(report.regions).map(([region, nations]) => {
+                  const regionPopulation = nations.reduce((sum, nation) => sum + nation.population, 0);
+                  return (
+                    <div key={region}>
+                      <h2>## __{region}__ - {formatPopulation(regionPopulation)}</h2>
+                      <ul>
+                        {nations.map((nation, index) => (
+                          <li key={nation.name}>
+                            {index === 0 ? (
+                              <strong>__{nation.name}__</strong>
+                            ) : (
+                              nation.name
+                            )}: {formatPopulation(nation.population)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {Object.keys(report.empires).length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Empire Report</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="prose dark:prose-invert max-w-none">
+                  {Object.entries(report.empires).map(([empireId, empire]) => (
+                    <div key={empireId} className="mb-6">
+                      <h3>### {empire.name} - {formatPopulation(empire.totalPopulation)}</h3>
+                      <ul>
+                        {empire.vassals.map((vassal, index) => (
+                          <li key={vassal.name}>
+                            {index === 0 ? (
+                              <strong>__{vassal.name}__</strong>
+                            ) : (
+                              vassal.name
+                            )}: {formatPopulation(vassal.population)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       ) : null}
     </div>
   );

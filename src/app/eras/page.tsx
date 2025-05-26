@@ -14,14 +14,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { TimelineTable } from "@/components/timeline-table";
-
-async function getEras() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/eras`, { cache: 'no-store' });
-  if (!res.ok) {
-    throw new Error('Failed to fetch eras');
-  }
-  return res.json();
-}
+import { getEras } from "@/app/api/eras/route";
 
 function LoadingSkeleton() {
   return (
@@ -122,17 +115,6 @@ export default async function ErasPage() {
           </Link>
         </Button>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Population Timeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Suspense fallback={<LoadingSkeleton />}>
-            <TimelineTable eras={eras} />
-          </Suspense>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>

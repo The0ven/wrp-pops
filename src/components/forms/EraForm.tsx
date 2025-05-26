@@ -10,7 +10,7 @@ import { Era } from "@/types/population";
 
 interface EraFormProps {
   initialData?: Era;
-  onSubmit: (data: Omit<Era, "id" | "createdAt" | "updatedAt">) => void;
+  onSubmit: (data: Omit<Era, "id" | "createdAt" | "updatedAt" | "startDate" | "endDate">) => void;
 }
 
 export function EraForm({ initialData, onSubmit }: EraFormProps) {
