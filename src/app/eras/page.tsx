@@ -15,6 +15,7 @@ import {
 } from "../../components/ui/table";
 import { TimelineTable } from "@/components/timeline-table";
 import { getEras } from "@/app/api/eras/route";
+import { deleteEra } from "../api/eras/[id]/route";
 
 function LoadingSkeleton() {
   return (

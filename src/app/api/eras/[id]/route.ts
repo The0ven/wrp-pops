@@ -33,3 +33,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     }
     return NextResponse.json(await getEra(id, (await request.json()).include));
 }
+
+export async function deleteEra(id: string) {
+    const era = await prisma.era.delete({
+        where: { id: id },
+    });
+    return era;
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+    const { id } = await params;
+    if (!id) {
+        return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    }
+    return NextResponse.json(await deleteEra(id));
+}

@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useNations } from "@/hooks/use-nations";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "../ui/button";
+import { Trash } from "lucide-react";
+import { archiveNationByName } from "@/actions/util";
 
 interface Nation {
   id: string;
@@ -68,7 +71,21 @@ const NationsList = memo(({ nations, isArchived }: {
                 <Link key={nation.id} href={`/nations/${nation.id}`} className="block">
                   <Card className="hover:bg-secondary-50 transition-colors">
                     <CardHeader>
-                      <CardTitle className="text-lg">{nation.name}</CardTitle>
+                      <CardTitle className="text-lg flex items-center justify-between ">
+                        {nation.name}
+                        {/* use server action to archive nation */}
+                        <Button 
+                          variant="destructive" 
+                          size="icon" 
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            archiveNationByName(nation.name);
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4">

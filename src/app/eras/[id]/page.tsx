@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getEra } from "@/app/api/eras/[id]/route";
 import { Era, Growth } from "@prisma/client";
 import { getNation } from "@/app/api/nations/[id]/route";
+import { ArchiveEraButton } from "@/components/eras/archive-era-button";
 
 function EraSkeleton() {
   return (
@@ -79,6 +80,7 @@ export default async function EraDetailPage({ params }: { params: Promise<{ id: 
         <Button variant="outline" asChild>
           <Link href="/eras">Back to Eras</Link>
         </Button>
+        <ArchiveEraButton era={era} />
       </div>
       <Card>
         <CardHeader className="flex justify-between">

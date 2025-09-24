@@ -1,6 +1,7 @@
 "use server"
 
 import { updateNation } from "@/app/api/nations/[id]/route";
+import { deleteEra as deleteEraFunction } from "@/app/api/eras/[id]/route";
 import { prisma } from "@/lib/prisma";
 
 export const nationsDiff = async (nationNames: string[]) => {
@@ -81,3 +82,30 @@ export const fetchNation = async (nationId: string) => {
     where: { id: nationId },
   });
 };
+
+export const deleteEra = async (eraId: string) => {
+    try {
+        // Delete related growths and additions first to avoid foreign key constraints
+        await prisma.growth.deleteMany({
+            where: { eraId }
+        });
+        
+        await prisma.addition.deleteMany({
+            where: { eraId }
+        });
+        
+        // Now delete the era
+        await deleteEraFunction(eraId);
+        
+        return {
+            success: true,
+            message: "Era deleted successfully"
+        };
+    } catch (error) {
+        console.error('Error deleting era:', error);
+        return {
+            success: false,
+            message: "Failed to delete era"
+        };
+    }
+}

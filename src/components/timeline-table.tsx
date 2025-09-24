@@ -214,7 +214,7 @@ export function TimelineTable({ eras }: { eras: any[] }) {
               if (editedGrowth === -1) {
                 endPopulation = 0;
               } else {
-                endPopulation = Math.round(adjustedStartPop * Math.pow((1 + editedGrowth / 100), (era.endYear - era.startYear)));
+                endPopulation = Math.round(adjustedStartPop * Math.pow((1 + editedGrowth), (era.endYear - era.startYear)));
               }
               // Save growth
               if (growthObj) {
@@ -391,7 +391,7 @@ export function TimelineTable({ eras }: { eras: any[] }) {
                             if (editedGrowth === -1) {
                               previewEndPop = 0;
                             } else {
-                              previewEndPop = Math.round(adjustedStartPop * Math.pow((1 + editedGrowth / 100), (era.endYear - era.startYear)));
+                              previewEndPop = Math.round(adjustedStartPop * Math.pow((1 + editedGrowth), (era.endYear - era.startYear)));
                             }
                             
                             return <span className="font-semibold text-primary">{previewEndPop.toLocaleString()}</span>;
