@@ -1,111 +1,54 @@
-"use server"
-
-import { updateNation } from "@/app/api/nations/[id]/route";
-import { deleteEra as deleteEraFunction } from "@/app/api/eras/[id]/route";
+"use server";
+import { revalidatePath } from "next/cache";
+import { updateNation, deleteEra as removeEra } from "@/app/api/_lib/records";
+import { errorMessage } from "@/app/api/_lib/errors";
 import { prisma } from "@/lib/prisma";
 
-export const nationsDiff = async (nationNames: string[]) => {
-    /*
-     * Returns two arrays
-     * the 1st is the nations NOT CREATED that DO appear in the input list (To Archive)
-     * the 2nd is the nations CREATED that DO NOT appear in the input list (To Create)
-     */
-    const nations = await prisma?.nation.findMany({
-        select: {
-            name: true,
-            isArchived: false
-        }
-    })
-    
-    const inputList = nationNames.map(n => n.trim().toLowerCase());
-    const existingList = nations?.map(n => n.name.trim().toLowerCase()) || [];
-
-    // Helper to check if a name is present as a substring in any of the other list
-    const isNameInList = (name: string, list: string[]) => {
-        return list.some(other => other.includes(name) || name.includes(other));
-    };
-
-    // To Archive: names in inputList that are not present in existingList (by substring match)
-    const toArchive = inputList.filter(
-        name => !isNameInList(name, existingList)
-    );
-    // To Create: names in existingList that are not present in inputList (by substring match)
-    const toCreate = existingList.filter(
-        name => !isNameInList(name, inputList)
-    );
-
-    return [toArchive, toCreate];
+export async function nationsDiff(nationNames: string[]) {
+  const nations = await prisma.nation.findMany({
+    where: { isArchived: false },
+    select: { name: true },
+  });
+  const input = [
+    ...new Set(nationNames.map((name) => name.trim()).filter(Boolean)),
+  ];
+  const existing = new Set(nations.map((n) => n.name.toLowerCase()));
+  const supplied = new Set(input.map((name) => name.toLowerCase()));
+  return [
+    input.filter((name) => !existing.has(name.toLowerCase())),
+    nations
+      .filter((n) => !supplied.has(n.name.toLowerCase()))
+      .map((n) => n.name),
+  ];
 }
-
-export const archiveNationByName = async (nationName: string) => {
-    const nation = await prisma?.nation.findFirst({
-        where: {
-            name: nationName
-        },
-        select: {
-            id: true,
-            isArchived: true
-        }
-    })
-
-    if (nation?.isArchived || !nation?.id) {
-        return {
-            success: false,
-            message: "Nation already archive or does not exist"
-        }
-    }
-
-    await updateNation(nation.id, {
-        isArchived: true
-    })
-
+export async function archiveNation(id: string) {
+  try {
+    await updateNation(id, { isArchived: true });
+    revalidatePath("/", "layout");
+    return { success: true, message: "Nation archived" };
+  } catch (error) {
+    return { success: false, message: errorMessage(error) };
+  }
+}
+export async function archiveNationByName(name: string) {
+  const nations = await prisma.nation.findMany({
+    where: { name, isArchived: false },
+    select: { id: true },
+  });
+  if (nations.length !== 1)
     return {
-        success: true,
-        message: "Nation archived"
-    }
+      success: false,
+      message:
+        "Find the nation by its detail page; this name is missing or ambiguous.",
+    };
+  return archiveNation(nations[0].id);
 }
-
-export const fetchGrowthAndAddition = async (eraId: string, nationId: string) => {
-  const growth = await prisma.growth.findFirst({
-    where: { eraId, nationId },
-    include: { nation: true, era: true },
-  });
-  const addition = await prisma.addition.findFirst({
-    where: { eraId, nationId },
-    include: { nation: true, era: true },
-  });
-  return { growth, addition };
-};
-
-export const fetchNation = async (nationId: string) => {
-  return await prisma.nation.findUnique({
-    where: { id: nationId },
-  });
-};
-
-export const deleteEra = async (eraId: string) => {
-    try {
-        // Delete related growths and additions first to avoid foreign key constraints
-        await prisma.growth.deleteMany({
-            where: { eraId }
-        });
-        
-        await prisma.addition.deleteMany({
-            where: { eraId }
-        });
-        
-        // Now delete the era
-        await deleteEraFunction(eraId);
-        
-        return {
-            success: true,
-            message: "Era deleted successfully"
-        };
-    } catch (error) {
-        console.error('Error deleting era:', error);
-        return {
-            success: false,
-            message: "Failed to delete era"
-        };
-    }
+export async function deleteEra(id: string) {
+  try {
+    await removeEra(id);
+    revalidatePath("/", "layout");
+    return { success: true, message: "Era deleted successfully" };
+  } catch (error) {
+    return { success: false, message: errorMessage(error) };
+  }
 }

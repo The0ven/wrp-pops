@@ -12,6 +12,21 @@
 
 # testing
 /coverage
+/.local-backups/
+/.test-data/
+/test-results/
+/playwright-report/
+/.next-test/
+/.next-build-check/
+/.pnpm-store/
+
+# live databases never belong in git
+/prisma/*.db
+/prisma/*.db-journal
+/prisma/*.db-wal
+/prisma/*.db-shm
+/prisma/*.db.backup
+/prisma/schema.deploy.prisma
 
 # next.js
 /.next/

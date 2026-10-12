@@ -9,6 +9,8 @@ import {
   Users,
   FileText,
   Crown,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useSidebar } from "@/components/providers/SidebarProvider";
 
@@ -50,23 +52,20 @@ const Sidebar = () => {
   ];
 
   return (
-    <div 
+    <div
       className={cn(
         "relative space-y-4 py-4 flex flex-col h-full bg-background text-foreground transition-all duration-300 border-r border-border",
-        isCollapsed ? "w-[80px]" : "w-[240px]"
+        isCollapsed ? "w-[64px] shrink-0" : "w-[180px] md:w-[240px] shrink-0",
       )}
-      onClick={() => setIsCollapsed(!isCollapsed)}
     >
       <div className="px-3 py-2">
-        <Link 
-          href="/"
-          onClick={(e) => e.stopPropagation()}
-          className="block"
-        >
-          <h2 className={cn(
-            "text-lg font-semibold tracking-tight transition-all duration-300 hover:text-primary",
-            isCollapsed && "text-center"
-          )}>
+        <Link href="/" onClick={(e) => e.stopPropagation()} className="block">
+          <h2
+            className={cn(
+              "text-lg font-semibold tracking-tight transition-all duration-300 hover:text-primary",
+              isCollapsed && "text-center",
+            )}
+          >
             {isCollapsed ? "PT" : "Population Tracker"}
           </h2>
         </Link>
@@ -76,30 +75,47 @@ const Sidebar = () => {
           {routes.map((route) => (
             <Link
               key={route.href}
+              aria-label={route.label}
+              aria-current={route.active ? "page" : undefined}
+              title={route.label}
               href={route.href}
               className={cn(
                 "text-sm group flex p-3 w-full justify-start font-medium cursor-pointer hover:text-foreground hover:bg-muted rounded-lg transition",
                 route.active
                   ? "text-foreground bg-muted"
                   : "text-muted-foreground",
-                isCollapsed && "justify-center"
+                isCollapsed && "justify-center",
               )}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center flex-1">
-                <route.icon className={cn(
-                  "h-5 w-5",
-                  isCollapsed ? "" : "mr-3",
-                  route.active ? "text-primary" : "text-muted-foreground"
-                )} />
+                <route.icon
+                  className={cn(
+                    "h-5 w-5",
+                    isCollapsed ? "" : "mr-3",
+                    route.active ? "text-primary" : "text-muted-foreground",
+                  )}
+                />
                 {!isCollapsed && route.label}
               </div>
             </Link>
           ))}
         </div>
       </div>
+      <button
+        type="button"
+        className="mx-3 flex items-center justify-center rounded-md p-2 hover:bg-muted"
+        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        {isCollapsed ? (
+          <PanelLeftOpen className="h-5 w-5" />
+        ) : (
+          <PanelLeftClose className="h-5 w-5" />
+        )}
+      </button>
     </div>
   );
 };
 
-export default Sidebar; 
+export default Sidebar;

@@ -1,0 +1,7 @@
+[Unit]
+Description=Back up the WRP population tracker database
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/wrp-pops.env
+ExecStart=/root/wrp-pops/deploy/backup.sh

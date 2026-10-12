@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft, Pencil, Crown } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { EmpireArmyCalculator } from "@/components/ui/armycalculator";
 
 async function getEmpire(id: string) {
   const empire = await prisma.empire.findUnique({
@@ -18,7 +19,7 @@ async function getEmpire(id: string) {
               era: true,
             },
             orderBy: {
-              createdAt: 'desc',
+              era: { endYear: "desc" },
             },
           },
         },
@@ -27,21 +28,25 @@ async function getEmpire(id: string) {
   });
 
   if (!empire) {
-    throw new Error('Empire not found');
+    throw new Error("Empire not found");
   }
 
   return empire;
 }
 
-export default async function EmpirePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EmpirePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const empire = await getEmpire(id);
 
+  const pops = empire.vassals.map(
+    (vassal) => vassal.growths[0]?.endPopulation ?? vassal.startPopulation,
+  );
   // Calculate total population across all vassals
-  const totalPopulation = empire.vassals.reduce((total, vassal) => {
-    const latestGrowth = vassal.growths[0];
-    return total + (latestGrowth?.endPopulation || vassal.startPopulation);
-  }, 0);
+  const totalPopulation = pops.reduce((total, pop) => total + pop, 0);
 
   return (
     <div className="space-y-6">
@@ -58,7 +63,8 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
               {empire.name}
             </h1>
             <p className="text-muted-foreground">
-              {empire.vassals.length} vassal{empire.vassals.length !== 1 ? 's' : ''}
+              {empire.vassals.length} vassal
+              {empire.vassals.length !== 1 ? "s" : ""}
             </p>
           </div>
         </div>
@@ -70,7 +76,7 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Empire Statistics</CardTitle>
@@ -85,9 +91,7 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Vassal Nations</span>
-                <span className="font-medium">
-                  {empire.vassals.length}
-                </span>
+                <span className="font-medium">{empire.vassals.length}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Founded</span>
@@ -101,26 +105,42 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
 
         <Card>
           <CardHeader>
+            <CardTitle>Army Statistics</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <EmpireArmyCalculator pops={pops} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>Empire Regions</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {Array.from(new Set(empire.vassals.map(v => v.region))).map(region => {
-                const regionNations = empire.vassals.filter(v => v.region === region);
-                const regionPop = regionNations.reduce((total, vassal) => {
-                  const latestGrowth = vassal.growths[0];
-                  return total + (latestGrowth?.endPopulation || vassal.startPopulation);
-                }, 0);
-                
-                return (
-                  <div key={region} className="flex justify-between">
-                    <span className="text-muted-foreground">{region}</span>
-                    <span className="font-medium">
-                      {regionPop.toLocaleString()} ({regionNations.length})
-                    </span>
-                  </div>
-                );
-              })}
+              {Array.from(new Set(empire.vassals.map((v) => v.region))).map(
+                (region) => {
+                  const regionNations = empire.vassals.filter(
+                    (v) => v.region === region,
+                  );
+                  const regionPop = regionNations.reduce((total, vassal) => {
+                    const latestGrowth = vassal.growths[0];
+                    return (
+                      total +
+                      (latestGrowth?.endPopulation ?? vassal.startPopulation)
+                    );
+                  }, 0);
+
+                  return (
+                    <div key={region} className="flex justify-between">
+                      <span className="text-muted-foreground">{region}</span>
+                      <span className="font-medium">
+                        {regionPop.toLocaleString()} ({regionNations.length})
+                      </span>
+                    </div>
+                  );
+                },
+              )}
             </div>
           </CardContent>
         </Card>
@@ -137,10 +157,15 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
             ) : (
               empire.vassals.map((vassal) => {
                 const latestGrowth = vassal.growths[0];
-                const currentPop = latestGrowth?.endPopulation || vassal.startPopulation;
-                
+                const currentPop =
+                  latestGrowth?.endPopulation ?? vassal.startPopulation;
+
                 return (
-                  <Link key={vassal.id} href={`/nations/${vassal.id}`} className="block">
+                  <Link
+                    key={vassal.id}
+                    href={`/nations/${vassal.id}`}
+                    className="block"
+                  >
                     <div className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-muted/50 rounded px-2 transition-colors cursor-pointer">
                       <div>
                         <p className="font-medium">{vassal.name}</p>
@@ -153,10 +178,9 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
                           {currentPop.toLocaleString()}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {latestGrowth ? 
-                            `${latestGrowth.growthRate > 0 ? '+' : ''}${(latestGrowth.growthRate * 100).toFixed(2)}%` 
-                            : 'No growth data'
-                          }
+                          {latestGrowth
+                            ? `${latestGrowth.growthRate > 0 ? "+" : ""}${(latestGrowth.growthRate * 100).toFixed(2)}%`
+                            : "No growth data"}
                         </p>
                       </div>
                     </div>
@@ -169,4 +193,4 @@ export default async function EmpirePage({ params }: { params: Promise<{ id: str
       </Card>
     </div>
   );
-} 
+}

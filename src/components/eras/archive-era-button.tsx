@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -23,23 +23,24 @@ interface ArchiveEraButtonProps {
 export function ArchiveEraButton({ era }: ArchiveEraButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleDelete = async () => {
     setIsDeleting(true);
+    setError(null);
     try {
       const result = await deleteEra(era.id);
 
       if (result.success) {
         setIsOpen(false);
-        router.push('/eras');
+        router.push("/eras");
         router.refresh();
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
-      console.error('Error deleting era:', error);
-      // You could add a toast notification here
+      setError(error instanceof Error ? error.message : "Failed to delete era");
     } finally {
       setIsDeleting(false);
     }
@@ -48,7 +49,7 @@ export function ArchiveEraButton({ era }: ArchiveEraButtonProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="icon">
+        <Button variant="destructive" size="icon" aria-label="Delete era">
           <Trash2 className="h-4 w-4" />
         </Button>
       </DialogTrigger>
@@ -56,19 +57,29 @@ export function ArchiveEraButton({ era }: ArchiveEraButtonProps) {
         <DialogHeader>
           <DialogTitle>Delete Era</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete "{era.name}"? This action cannot be undone and will also delete all associated growths and additions.
+            Are you sure you want to delete "{era.name}"? This action cannot be
+            undone and will also delete all associated growths and additions.
           </DialogDescription>
         </DialogHeader>
+        {error && (
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        )}
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
+          <Button
+            variant="outline"
+            disabled={isDeleting}
+            onClick={() => setIsOpen(false)}
+          >
             Cancel
           </Button>
-          <Button 
-            variant="destructive" 
+          <Button
+            variant="destructive"
             onClick={handleDelete}
             disabled={isDeleting}
           >
-            {isDeleting ? 'Deleting...' : 'Delete Era'}
+            {isDeleting ? "Deleting..." : "Delete Era"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import ArmyCalculator from "@/components/ui/armycalculator";
+import { ArmyCalculator } from "@/components/ui/armycalculator";
 
 async function getNation(id: string) {
   const nation = await prisma.nation.findUnique({
@@ -11,7 +12,7 @@ async function getNation(id: string) {
   });
 
   if (!nation) {
-    throw new Error('Nation not found');
+    notFound();
   }
 
   return nation;
@@ -21,35 +22,39 @@ async function getEras(id: string, startYear: number) {
   const eras = await prisma.era.findMany({
     where: {
       endYear: {
-        gte: startYear
+        gte: startYear,
       },
     },
     include: {
       growths: {
         where: {
-          nationId: id
-        }
+          nationId: id,
+        },
       },
       additions: {
         where: {
-          nationId: id
-        }
-      }
+          nationId: id,
+        },
+      },
     },
     orderBy: {
-      startYear: "desc"
-    }
-  })
+      startYear: "desc",
+    },
+  });
 
   return eras;
 }
 
-export default async function NationPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function NationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const nation = await getNation(id);
   const eras = await getEras(id, nation.startYear);
-  const latestEra = eras[0]
-  const latestGrowth = latestEra.growths[0]
+  const latestEra = eras.find((era) => era.growths.length > 0);
+  const latestGrowth = latestEra?.growths[0];
 
   return (
     <div className="space-y-6">
@@ -62,7 +67,9 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
           </Button>
           <div>
             <h1 className="text-3xl font-bold">{nation.name}</h1>
-            <p className="text-muted-foreground">{nation.region} - Founded {nation.startYear}</p>
+            <p className="text-muted-foreground">
+              {nation.region} - Founded {nation.startYear}
+            </p>
           </div>
         </div>
         <Button variant="outline" asChild>
@@ -76,25 +83,37 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Current Status - {latestEra.endYear}</CardTitle>
+            <CardTitle>
+              Current Status - {latestEra?.endYear ?? nation.startYear}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Population</span>
                 <span className="font-medium">
-                  {latestGrowth?.endPopulation.toLocaleString() || '-'}
+                  {(
+                    latestGrowth?.endPopulation ?? nation.startPopulation
+                  ).toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Growth Rate</span>
                 <span className="font-medium">
-                  {latestGrowth ? `${(latestGrowth.growthRate * 100).toFixed(2)}%` : '-'}
+                  {latestGrowth
+                    ? `${(latestGrowth.growthRate * 100).toFixed(2)}%`
+                    : "-"}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Status</span>
-                <span className={nation.isArchived ? "text-muted-foreground" : "text-green-600"}>
+                <span
+                  className={
+                    nation.isArchived
+                      ? "text-muted-foreground"
+                      : "text-green-600"
+                  }
+                >
                   {nation.isArchived ? "Archived" : "Active"}
                 </span>
               </div>
@@ -107,7 +126,9 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
             <CardTitle>Recruitment Statistics</CardTitle>
           </CardHeader>
           <CardContent>
-            <ArmyCalculator pop={latestGrowth?.endPopulation} />
+            <ArmyCalculator
+              pop={latestGrowth?.endPopulation ?? nation.startPopulation}
+            />
           </CardContent>
         </Card>
       </div>
@@ -122,31 +143,38 @@ export default async function NationPage({ params }: { params: Promise<{ id: str
               const growth = era.growths[0];
               const addition = era.additions[0];
               if (!growth) {
-               return null
+                return null;
               }
-              return(
-              <Link key={growth?.id} href={`/eras/${era.id}/nations/${id}`} className="block">
-                <div className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-muted/50 rounded px-2 transition-colors cursor-pointer">
-                  <div>
-                    <p className="font-medium">{era.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {(addition?.amount > 0 ? "+" : "") + (addition?.amount || 0)}
-                    </p>
+              return (
+                <Link
+                  key={growth?.id}
+                  href={`/eras/${era.id}/nations/${id}`}
+                  className="block"
+                >
+                  <div className="flex items-center justify-between py-2 border-b last:border-0 hover:bg-muted/50 rounded px-2 transition-colors cursor-pointer">
+                    <div>
+                      <p className="font-medium">{era.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {(addition?.amount > 0 ? "+" : "") +
+                          (addition?.amount || 0)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">
+                        {growth?.endPopulation.toLocaleString()} {era.endYear}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {growth?.growthRate > 0 ? "+" : ""}
+                        {(growth?.growthRate * 100).toFixed(2)}%
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">
-                      {growth?.endPopulation.toLocaleString()} {era.endYear}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {growth?.growthRate > 0 ? '+' : ''}{(growth?.growthRate * 100).toFixed(2)}%
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            )})}
+                </Link>
+              );
+            })}
           </div>
         </CardContent>
       </Card>
     </div>
   );
-} 
+}

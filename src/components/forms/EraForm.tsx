@@ -1,87 +1,114 @@
 "use client";
-
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useRouter } from "next/navigation";
+import type { Era } from "@prisma/client";
+import { eraSchema } from "@/lib/validation";
+import { handleSubmitEraAction } from "@/actions/forms";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Era } from "@/types/population";
-
-interface EraFormProps {
-  initialData?: Era;
-  onSubmit: (data: Omit<Era, "id" | "createdAt" | "updatedAt" | "startDate" | "endDate">) => void;
-}
-
-export function EraForm({ initialData, onSubmit }: EraFormProps) {
-  const [name, setName] = useState(initialData?.name || "");
-  const [startYear, setStartYear] = useState(initialData?.startYear || 0);
-  const [endYear, setEndYear] = useState(initialData?.endYear || 0);
-  const [description, setDescription] = useState(initialData?.description || "");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit({
-      name,
-      startYear,
-      endYear,
-      description,
-    });
-  };
-
+export function EraForm({ initialData }: { initialData?: Era }) {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<z.infer<typeof eraSchema>>({
+    resolver: zodResolver(eraSchema),
+    defaultValues: {
+      name: initialData?.name ?? "",
+      startYear: initialData?.startYear ?? 0,
+      endYear: initialData?.endYear ?? 0,
+      description: initialData?.description ?? "",
+    },
+  });
+  async function save(data: z.infer<typeof eraSchema>) {
+    setError(null);
+    try {
+      const result = await handleSubmitEraAction(initialData?.id, data);
+      if (!result.success) {
+        setError(result.message);
+        return;
+      }
+      router.push(`/eras/${result.era.id}`);
+      router.refresh();
+    } catch {
+      setError("Unable to save. Your edits are still here; please try again.");
+    }
+  }
   return (
     <Card>
       <CardHeader>
         <CardTitle>{initialData ? "Edit Era" : "Create New Era"}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Era Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Enter era name"
-              required
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit(save)} className="space-y-4">
+          <fieldset disabled={isSubmitting} className="space-y-4">
+            {(
+              [
+                ["name", "Era Name"],
+                ["startYear", "Start Year"],
+                ["endYear", "End Year"],
+              ] as const
+            ).map(([key, label]) => (
+              <div key={key} className="space-y-2">
+                <Label htmlFor={key}>{label}</Label>
+                <Input
+                  id={key}
+                  type={key === "name" ? "text" : "number"}
+                  step={key === "name" ? undefined : 1}
+                  {...register(key, { valueAsNumber: key !== "name" })}
+                  required
+                />
+                {errors[key] && (
+                  <p role="alert" className="text-sm text-destructive">
+                    {errors[key]?.message}
+                  </p>
+                )}
+              </div>
+            ))}
             <div className="space-y-2">
-              <Label htmlFor="startYear">Start Year</Label>
-              <Input
-                id="startYear"
-                type="number"
-                value={startYear}
-                onChange={(e) => setStartYear(Number(e.target.value))}
-                required
-              />
+              <Label htmlFor="description">Description</Label>
+              <Textarea id="description" {...register("description")} />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="endYear">End Year</Label>
-              <Input
-                id="endYear"
-                type="number"
-                value={endYear}
-                onChange={(e) => setEndYear(Number(e.target.value))}
-                required
-              />
+            {initialData && (
+              <p className="text-sm text-muted-foreground">
+                Changing the years recalculates this era's populations. Existing
+                addition dates must stay within the era.
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button type="submit">
+                {isSubmitting
+                  ? "Saving..."
+                  : initialData
+                    ? "Update Era"
+                    : "Create Era"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() =>
+                  router.push(initialData ? `/eras/${initialData.id}` : "/eras")
+                }
+              >
+                Cancel
+              </Button>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Enter era description"
-            />
-          </div>
-          <Button type="submit">
-            {initialData ? "Update Era" : "Create Era"}
-          </Button>
+          </fieldset>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>
   );
-} 
+}

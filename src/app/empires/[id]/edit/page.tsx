@@ -8,16 +8,12 @@ async function getEmpire(id: string) {
   const empire = await prisma.empire.findUnique({
     where: { id },
     include: {
-      vassals: {
-        where: {
-          isArchived: false, // Exclude archived nations from vassals
-        },
-      },
+      vassals: true,
     },
   });
 
   if (!empire) {
-    throw new Error('Empire not found');
+    throw new Error("Empire not found");
   }
 
   return empire;
@@ -32,16 +28,17 @@ async function getAvailableNations(empireId: string) {
         { empireId: empireId }, // Nations that belong to this empire
       ],
     },
-    orderBy: [
-      { region: 'asc' },
-      { name: 'asc' },
-    ],
+    orderBy: [{ region: "asc" }, { name: "asc" }],
   });
-  
+
   return nations;
 }
 
-export default async function EditEmpirePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditEmpirePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
   const [empire, availableNations] = await Promise.all([
     getEmpire(id),
@@ -64,7 +61,7 @@ export default async function EditEmpirePage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      <EmpireForm 
+      <EmpireForm
         initialData={{
           id: empire.id,
           name: empire.name,
@@ -74,4 +71,4 @@ export default async function EditEmpirePage({ params }: { params: Promise<{ id:
       />
     </div>
   );
-} 
+}

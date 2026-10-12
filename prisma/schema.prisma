@@ -30,6 +30,25 @@ model Nation {
   additions       Addition[]
   empireId        String?
   empire          Empire?    @relation("EmpireVassals", fields: [empireId], references: [id])
+  discordRegistration DiscordRegistration?
+}
+
+// Links a Discord signup (or a staff-linked legacy nation) to exactly one tracker nation.
+model DiscordRegistration {
+  id            String    @id @default(cuid())
+  applicationId String    @unique
+  guildId       String
+  memberId      String
+  threadId      String?
+  nationId      String    @unique
+  nation        Nation    @relation(fields: [nationId], references: [id], onDelete: Cascade)
+  payloadHash   String?
+  source        String    @default("registration")
+  releasedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([guildId, memberId])
 }
 
 model Era {

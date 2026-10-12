@@ -1,0 +1,9 @@
+[Unit]
+Description=Nightly WRP population tracker database backup
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

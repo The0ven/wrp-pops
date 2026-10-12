@@ -6,9 +6,7 @@ import { prisma } from "@/lib/prisma";
 
 async function getEmpires() {
   const empires = await prisma.empire.findMany({
-    orderBy: [
-      { name: 'asc' },
-    ],
+    orderBy: [{ name: "asc" }],
     include: {
       vassals: {
         where: {
@@ -17,13 +15,13 @@ async function getEmpires() {
         include: {
           growths: {
             orderBy: {
-              createdAt: 'desc',
+              era: { endYear: "desc" },
             },
             take: 1, // Only get the latest growth for each nation
           },
         },
         orderBy: {
-          name: 'asc',
+          name: "asc",
         },
       },
     },
@@ -56,4 +54,4 @@ export default async function EmpiresPage() {
       <EmpiresListWithSearch empires={empires} />
     </div>
   );
-} 
+}

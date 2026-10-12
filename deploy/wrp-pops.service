@@ -1,0 +1,16 @@
+[Unit]
+Description=WRP population tracker
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/wrp-pops
+EnvironmentFile=/etc/wrp-pops.env
+# Listen on loopback only: the tracker has no login. Use an SSH tunnel to reach the UI.
+ExecStart=/usr/local/bin/node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,115 +1,193 @@
 "use client";
-
-import React from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Nation } from "@prisma/client";
+import { recordSchema, type RecordInput } from "@/lib/validation";
+import {
+  calculatePopulation,
+  startingPopulation,
+  type EraRecords,
+} from "@/lib/population";
+import { submitPopulationRecords } from "@/actions/forms";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Era, Nation } from "@prisma/client";
-
-const PrevEraButton = ({eras, nation, era, setValue}: {eras: any[], nation: Nation, era: Era, setValue: any}) => {
-  // Find all eras for this nation, sorted by startYear
-  const nationEras = eras
-    .filter((e: any) => e.growths && e.growths.some((g: any) => g.nation.id === nation.id))
-    .sort((a: any, b: any) => a.startYear - b.startYear);
-  // Find the index of the current era
-  const currentEraIndex = nationEras.findIndex((e: any) => e.id === era.id);
-  // Previous era is at currentEraIndex - 1
-  if (currentEraIndex > 0) {
-    const prevEra = nationEras[currentEraIndex - 1];
-    const prevGrowth = prevEra.growths.find((g: any) => g.nation.id === nation.id);
-    if (prevGrowth) {
-      return (
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="w-fit h-auto"
-          onClick={() => setValue("startPopulation", prevGrowth.endPopulation)}
-        >
-          Use {prevEra.endYear} Pop
-        </Button>
-      );
-    }
-  }
-  return null;
-}
-
+import { Card, CardContent } from "@/components/ui/card";
 
 export function GrowthAdditionForm({
-  initialData,
   nation,
   era,
-  submitAction,
-  loading = false,
-  error = null,
-  success = false,
-  eras = [],
+  eras,
 }: {
-  initialData: any;
-  nation: any;
-  era: any;
-  submitAction: (growthId: string, additionId: string, data: any) => Promise<void>;
-  loading?: boolean;
-  error?: string | null;
-  success?: boolean;
-  eras?: any[];
+  nation: Nation;
+  era: EraRecords;
+  eras: EraRecords[];
 }) {
-  const { register, handleSubmit, formState: { isSubmitting, errors }, setValue } = useForm({
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const growth = era.growths.find((g) => g.nationId === nation.id);
+  const additions = era.additions.filter((a) => a.nationId === nation.id);
+  const previous = [...eras]
+    .filter((e) => e.id !== era.id && e.endYear <= era.startYear)
+    .sort((a, b) => b.endYear - a.endYear)
+    .flatMap((e) =>
+      e.growths
+        .filter((g) => g.nationId === nation.id)
+        .map((g) => ({ endYear: e.endYear, population: g.endPopulation })),
+    )[0];
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    reset,
+    formState: { isSubmitting, errors },
+  } = useForm<RecordInput>({
+    resolver: zodResolver(recordSchema),
     defaultValues: {
-      startPopulation: initialData?.growth?.startPopulation,
-      growthRate: initialData?.growth?.growthRate,
-      endPopulation: initialData?.growth?.endPopulation,
-      amount: initialData?.addition?.amount,
-      note: initialData?.addition?.notes,
+      nationId: nation.id,
+      eraId: era.id,
+      startPopulation: startingPopulation(nation, era, eras),
+      growthRate: growth?.growthRate ?? 0,
+      amount: additions.reduce((sum, a) => sum + a.amount, 0),
+      notes: additions.at(-1)?.notes ?? "",
     },
   });
-
+  const values = watch();
+  let preview = "Invalid values";
+  try {
+    preview = calculatePopulation(
+      values.startPopulation ?? 0,
+      values.amount,
+      values.growthRate,
+      era.endYear - era.startYear,
+    ).toLocaleString();
+  } catch {
+    /* Validation below explains invalid inputs. */
+  }
+  async function save(data: RecordInput) {
+    setError(null);
+    setSuccess(false);
+    try {
+      const result = await submitPopulationRecords([data]);
+      if (!result.success) {
+        setError(result.message);
+        return;
+      }
+      reset(data);
+      setSuccess(true);
+      await queryClient.invalidateQueries({ queryKey: ["nations"] });
+      router.refresh();
+    } catch {
+      setError("Unable to save. Your edits are still here; please try again.");
+    }
+  }
   return (
     <Card>
-      <CardHeader />
-      <CardContent>
-        <form onSubmit={handleSubmit((data) => submitAction(initialData.growth.id, initialData.addition.id, data))} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="startPopulation">Start Population</Label>
-              <div className="flex gap-2 items-stretch">
-                <Input id="startPopulation" type="number" step="1" {...register("startPopulation", { required: true, valueAsNumber: true })} />
-                <PrevEraButton eras={eras} nation={nation} era={era} setValue={setValue} />
+      <CardContent className="pt-6">
+        <form onSubmit={handleSubmit(save)} className="space-y-4">
+          <fieldset disabled={isSubmitting} className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              {(
+                [
+                  ["startPopulation", "Start Population"],
+                  ["amount", "Addition Amount"],
+                  ["growthRate", "Growth Rate (0.01 = 1%)"],
+                ] as const
+              ).map(([key, label]) => (
+                <div className="space-y-2" key={key}>
+                  <Label htmlFor={key}>{label}</Label>
+                  <Input
+                    id={key}
+                    type="number"
+                    step={key === "growthRate" ? "0.001" : "1"}
+                    min={
+                      key === "growthRate"
+                        ? -1
+                        : key === "startPopulation"
+                          ? 0
+                          : undefined
+                    }
+                    {...register(key, { valueAsNumber: true, required: true })}
+                    required
+                  />
+                  {errors[key] && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {errors[key]?.message}
+                    </p>
+                  )}
+                  {key === "startPopulation" && previous && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() =>
+                        setValue("startPopulation", previous.population, {
+                          shouldDirty: true,
+                        })
+                      }
+                    >
+                      Use {previous.endYear} Pop
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <div className="space-y-2">
+                <Label>Calculated End Population</Label>
+                <output
+                  aria-label="Calculated End Population"
+                  className="block rounded-md border p-2 tabular-nums"
+                >
+                  {preview}
+                </output>
               </div>
-              {errors.startPopulation && <span className="text-red-500 text-xs">Required</span>}
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="growthRate">Growth Rate</Label>
-              <Input id="growthRate" type="number" step="0.0001" {...register("growthRate", { required: true, valueAsNumber: true })} />
-              {errors.growthRate && <span className="text-red-500 text-xs">Required</span>}
+            <p className="text-sm text-muted-foreground">
+              End population = (start population + additions) × (1 + annual
+              growth rate) raised to {era.endYear - era.startYear} years. Later
+              records keep their saved starting populations.
+            </p>
+            {additions.length > 1 && (
+              <p className="text-sm text-muted-foreground">
+                The addition amount is the total of {additions.length} entries.
+                Saving adjusts the last entry and preserves the others.
+              </p>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="notes">Addition Note</Label>
+              <Textarea id="notes" {...register("notes")} />
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="endPopulation">End Population</Label>
-              <Input id="endPopulation" type="number" step="1" {...register("endPopulation", { required: true, valueAsNumber: true })} />
-              {errors.endPopulation && <span className="text-red-500 text-xs">Required</span>}
+            <div className="flex gap-2">
+              <Button type="submit">
+                {isSubmitting ? "Saving..." : "Save"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => router.push(`/eras/${era.id}`)}
+              >
+                Back to era
+              </Button>
             </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="amount">Addition Amount</Label>
-              <Input id="amount" type="number" step="1" {...register("amount", { required: true, valueAsNumber: true })} />
-              {errors.amount && <span className="text-red-500 text-xs">Required</span>}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="note">Addition Note</Label>
-            <Textarea id="note" {...register("note")} />
-          </div>
-          <div className="flex gap-4 justify-end">
-            <Button type="submit" disabled={isSubmitting || loading}>
-              {isSubmitting || loading ? "Saving..." : "Save"}
-            </Button>
-          </div>
-          {error && <div className="text-red-500 text-sm mt-2">{error}</div>}
-          {success && <div className="text-green-600 text-sm mt-2">Saved!</div>}
+          </fieldset>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
+          {success && (
+            <p role="status" className="text-sm text-green-600">
+              Saved!
+            </p>
+          )}
         </form>
       </CardContent>
     </Card>
   );
-} 
+}

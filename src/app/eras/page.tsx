@@ -14,8 +14,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import { TimelineTable } from "@/components/timeline-table";
-import { getEras } from "@/app/api/eras/route";
-import { deleteEra } from "../api/eras/[id]/route";
+import { getEras } from "@/app/api/_lib/queries";
 
 function LoadingSkeleton() {
   return (
@@ -38,13 +37,23 @@ function LoadingSkeleton() {
           <TableBody>
             {[1, 2, 3, 4, 5].map((i) => (
               <TableRow key={i}>
-                <TableCell><Skeleton className="h-4 w-[100px]" /></TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-[100px]" />
+                </TableCell>
                 {[1, 2, 3].map((j) => (
                   <React.Fragment key={j}>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-[60px] ml-auto" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-4 w-[80px] ml-auto" /></TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-4 w-[80px] ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-4 w-[80px] ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-4 w-[60px] ml-auto" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Skeleton className="h-4 w-[80px] ml-auto" />
+                    </TableCell>
                   </React.Fragment>
                 ))}
               </TableRow>
@@ -75,15 +84,20 @@ function EraList({ eras }: { eras: any[] }) {
         {sortedEras.map((era) => (
           <TableRow key={era.id}>
             <TableCell className="font-medium">{era.name}</TableCell>
-            <TableCell>{era.startYear} - {era.endYear}</TableCell>
-            <TableCell>{era.description || '-'}</TableCell>
+            <TableCell>
+              {era.startYear} - {era.endYear}
+            </TableCell>
+            <TableCell>{era.description || "-"}</TableCell>
             <TableCell>{era.growths?.length || 0}</TableCell>
             <TableCell>
               {era.additions?.length ? (
                 <span className="text-muted-foreground">
-                  {era.additions.length} change{era.additions.length === 1 ? '' : 's'}
+                  {era.additions.length} change
+                  {era.additions.length === 1 ? "" : "s"}
                 </span>
-              ) : '-'}
+              ) : (
+                "-"
+              )}
             </TableCell>
             <TableCell className="text-right">
               <Button variant="outline" size="sm" asChild>
@@ -127,4 +141,4 @@ export default async function ErasPage() {
       </Card>
     </div>
   );
-} 
+}

@@ -3,21 +3,16 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import React from "react";
-import { getNation } from "@/app/api/nations/[id]/route";
+import { getNation } from "@/app/api/_lib/queries";
 
-export default async function EditNationPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditNationPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
 
-  const nation = await getNation(id, {
-    growths: {
-      include: {
-        era: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    },
-  }); 
+  const nation = await getNation(id);
 
   if (!nation) {
     return <div>Nation not found</div>;
@@ -39,7 +34,7 @@ export default async function EditNationPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      <NationForm initialData={nation}/>
+      <NationForm initialData={nation} />
     </div>
   );
-} 
+}

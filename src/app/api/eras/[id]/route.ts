@@ -1,50 +1,15 @@
-import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
-import { Era } from "@prisma/client";
-
-export async function updateEra(id: string, data: Partial<Era>) {
-    const era = await prisma.era.update({
-        where: { id: id },
-        data: data,
-    });
-    return era;
+import { updateEra, deleteEra } from "../../_lib/records";
+import { getEra } from "../../_lib/queries";
+import { respond } from "../../_lib/errors";
+type Context = { params: Promise<{ id: string }> };
+export async function GET(_request: Request, { params }: Context) {
+  return respond(async () => getEra((await params).id));
 }
-
-export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    if (!id) {
-        return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    }
-    return NextResponse.json(await updateEra(id, await request.json()));
+export async function PUT(request: Request, { params }: Context) {
+  return respond(async () =>
+    updateEra((await params).id, await request.json()),
+  );
 }
-
-export async function getEra(id: string, include: Record<string, any> = {}) {
-    const era = await prisma.era.findUnique({
-        where: { id: id },
-        include: include,
-    });
-    return era;
-}
-
-export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    if (!id) {
-        return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    }
-    return NextResponse.json(await getEra(id, (await request.json()).include));
-}
-
-export async function deleteEra(id: string) {
-    const era = await prisma.era.delete({
-        where: { id: id },
-    });
-    return era;
-}
-
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    if (!id) {
-        return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-    }
-    return NextResponse.json(await deleteEra(id));
+export async function DELETE(_request: Request, { params }: Context) {
+  return respond(async () => deleteEra((await params).id));
 }

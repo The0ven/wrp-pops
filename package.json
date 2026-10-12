@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "test": "node node_modules/vitest/vitest.mjs run",
+    "test:e2e": "node node_modules/@playwright/test/cli.js test",
+    "test:server": "node tests/start-server.mjs",
+    "format": "node node_modules/prettier/bin/prettier.cjs --write src tests"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -34,16 +38,19 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@shadcn/ui": "^0.0.4",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^24.19.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "prettier": "^3.9.9",
     "prisma": "^6.7.0",
     "tailwindcss": "^4",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.2.8",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^5.0.3"
   },
   "packageManager": "pnpm@10.6.5+sha512.cdf928fca20832cd59ec53826492b7dc25dc524d4370b6b4adbf65803d32efaa6c1c88147c0ae4e8d579a6c9eec715757b50d4fa35eea179d868eada4ed043af"
 }

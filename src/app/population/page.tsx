@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Suspense } from "react";
 import { TimelineTable } from "@/components/timeline-table";
-import { getEras } from "@/app/api/eras/route";
+import { getPopulationTimeline } from "@/app/api/_lib/queries";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function LoadingSkeleton() {
@@ -15,7 +15,7 @@ function LoadingSkeleton() {
 }
 
 export default async function PopulationPage() {
-  const eras = await getEras();
+  const { eras, nations } = await getPopulationTimeline();
 
   return (
     <div className="space-y-6">
@@ -33,10 +33,10 @@ export default async function PopulationPage() {
         </CardHeader>
         <CardContent>
           <Suspense fallback={<LoadingSkeleton />}>
-            <TimelineTable eras={eras} />
+            <TimelineTable eras={eras} nations={nations} />
           </Suspense>
         </CardContent>
       </Card>
     </div>
   );
-} 
+}
