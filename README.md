@@ -19,6 +19,7 @@ The default database remains `prisma/dev.db`. `DATABASE_URL=file:/absolute/path/
 The live tracker runs on the bot server as `wrp-pops.service`, listening only on `127.0.0.1:3000`. The database lives outside the repo at `/var/lib/wrp-pops/tracker.db` and is never committed; `/etc/wrp-pops.env` holds `DATABASE_URL` and `DISCORD_INTEGRATION_TOKEN`.
 
 - Open the UI: `ssh -L 3000:localhost:3000 root@<server>`, then browse to `http://localhost:3000`.
+- Or keep the tunnel up automatically on Windows: run `deploy/install-local-tunnel.ps1` once. It adds a "WRP Tracker Tunnel" logon task that reconnects on its own; logs go to `%LOCALAPPDATA%\wrp-tracker-tunnel.log`.
 - Deploy new code: push, then run `deploy/update.sh` on the server (stops the tracker, backs up the database, pulls, installs, applies pending migrations, builds, restarts).
 - Backups: `wrp-pops-backup.timer` writes a verified copy to `/var/lib/wrp-pops/backups` nightly and keeps 14 days. Run `deploy/backup.sh manual` for an extra one.
 - Pull a copy home: `scp root@<server>:/var/lib/wrp-pops/tracker.db prisma/dev.db` while nothing is running locally. Local edits are not synced back.
